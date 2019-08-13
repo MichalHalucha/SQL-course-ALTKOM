@@ -1,0 +1,121 @@
+use HM;
+go
+
+/* 
+case prosty
+case wyrażenie
+	when wartość 1 then 'wartość wyświetlana'
+	when wartość 2 then 'wartość wyświetlana'
+	when wartość 3	then 'wartość wyświelana;
+	else 'Wartosc dla pozostałych'
+end as [nazwa kolumny]
+*/
+
+select 
+wykonawca,tytul,
+	case nosnik
+		when 'CD' then 'Płyta CD'
+		when 'Analog' then 'Płyta Analogowa'
+		when 'VHS' then 'Kaseta VHS'
+		else 'Brak opisu'
+	end  as [Opis towaru]
+from tbTowary
+where case nosnik
+		when 'CD' then 'Płyta CD'
+		when 'Analog' then 'Płyta Analogowa'
+		when 'VHS' then 'Kaseta VHS'
+		else 'Brak opisu'
+	end = 'Płyta CD'
+
+
+select 
+wykonawca,tytul,cena,
+	case
+		when wykonawca = 'ELO' then 'ELO'
+		when cena<15 then 'Mniej niż 15 PLN'
+		when cena between 15 and 50 then 'Cena'
+		else 'Do sprawdzenia'
+	end  as [Opis towaru]
+from tbTowary;
+
+
+select 
+wykonawca,tytul,cena,
+	case
+		when cena<15 then 'Mniej niż 15 PLN'
+		when cena between 15 and 50 then 'Cena'
+		else 'Do sprawdzenia'
+	end  as [Opis towaru]
+from tbTowary
+where case 
+		when cena<15 then 'Mniej niż 15 PLN'
+		when cena between 15 and 50 then 'Cena'
+		else 'Do sprawdzenia'
+	end = 'Mniej niż 15 PLN'
+
+-- wyświetl te rekordy które maja w polu zakres cenowy mniej niż 15
+
+
+-- dzięń drugi
+--data sprze,rok i kwartał, + kwartał 1 2001 roku 
+--01 
+
+select DataSprzed
+	,YEAR(DataSprzed) as Rok
+	,DATEPART(q,DataSprzed) as Kwartal
+	-- case z przeszukaniem kwartałów when działa jako pętla
+	,case
+		when DATEPART(q,DataSprzed) = 1 then 'KW 1 ' 
+		when DATEPART(q,DataSprzed) = 2 then 'KW 2 '
+		when DATEPART(q,DataSprzed) = 3 then 'KW 3 '
+		when DATEPART(q,DataSprzed) = 4 then 'KW 4 '
+	end 
+	+ cast(YEAR(DataSprzed) as varchar)	as Rok_Kwartal 
+from tbFaktury
+where case
+		when DATEPART(q,DataSprzed) = 1 then 'KW 1 ' 
+		when DATEPART(q,DataSprzed) = 2 then 'KW 2 '
+		when DATEPART(q,DataSprzed) = 3 then 'KW 3 '
+		when DATEPART(q,DataSprzed) = 4 then 'KW 4 '
+	end = 'KW 3 ' and YEAR(DataSprzed) = 2005
+order by Rok, Kwartal;
+
+-- nazwa klinenta, liczba faktur , count zliczanie
+SELECT nazwa
+	,COUNT(NrFaktury) as LiczbaFaktur   
+FROM tbKlienci 
+	INNER JOIN tbFaktury 
+		ON tbKlienci.IDKlienta = tbFaktury.KlientID
+group by nazwa
+order by LiczbaFaktur desc;
+
+--03
+SELECT nazwa
+	,COUNT(NrFaktury) as LiczbaPozycjiNaFakturach    
+FROM tbPozycjeFaktur 
+	INNER JOIN tbFaktury 
+		ON tbPozycjeFaktur.FakturaID = tbFaktury.IDFaktury 
+	INNER JOIN tbKlienci 
+		ON tbFaktury.KlientID = tbKlienci.IDKlienta
+group by nazwa
+order by LiczbaPozycjiNaFakturach desc;
+
+-- zapytanie tak aby w jednym zapytaniu wyświetlić liczbe faktur i liczbe  pozycji na fakturze
+
+SELECT nazwa
+	,COUNT(distinct NrFaktury) as LiczbaFaktur 
+	,COUNT(NrFaktury) as LiczbaPozycjiNaFakturach 
+	,COUNT(distinct CenaSprz) as CenaSprz 
+	,sum(Ilosc*CenaSprz) as Ranking 
+FROM tbPozycjeFaktur 
+	INNER JOIN tbFaktury 
+		ON tbPozycjeFaktur.FakturaID = tbFaktury.IDFaktury 
+	INNER JOIN tbKlienci 
+		ON tbFaktury.KlientID = tbKlienci.IDKlienta
+group by nazwa
+order by Ranking desc;
+
+-- filtr top i offset fetch 
+
+
+--cena sprzedazy razy ilosc sprzedazy = wartosc per klient

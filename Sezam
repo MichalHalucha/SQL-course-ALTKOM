@@ -405,4 +405,70 @@ from tblOpisSprzedazy as O
 	inner join tblTowary as T
 		on O.KodTowaru=T.KodTowaru
 group by NazwaTowaru
+-- jeżeli mamy losowe towary to kończemy na group by
 order by Wartosc desc;
+
+-- pomin 10 pierwszych i wyswielt 10 kolejnych
+
+-- offset fetch filt dotyczący SQL dostepny w każdym systemie i ten filtr zapisujemy po order by  
+select LTRIM(NazwaTowaru) as Towar
+	,CAST(sum(Ilosc*CenaSprzedazy)as money) as Wartosc
+from tblOpisSprzedazy as O
+	inner join tblTowary as T
+		on O.KodTowaru=T.KodTowaru
+group by NazwaTowaru
+order by Wartosc desc
+--offset 10 rows fetch next 10 rows only -- od 10 do 20
+--offset 0 rows fetch next 10 rows only -- 10 pierwszych wierszy 
+offset 2 rows;
+
+-- imie nazwisko w jednej kolumie, wartość sprzedaży
+SELECT 
+	Imie + ' '+  SUBSTRING((ltrim(upper(Nazwisko))),1,1) + SUBSTRING((ltrim(lower(Nazwisko))) ,2,len(Nazwisko)),
+	cast(sum(Ilosc*CenaSprzedazy) as money) as Cena       
+FROM tblOpisSprzedazy 
+	INNER JOIN tblSprzedaz 
+		ON tblOpisSprzedazy.NrSprzedazy = tblSprzedaz.NrSprzedazy 
+			INNER JOIN tblPracownicy 
+				ON tblSprzedaz.IDPracownika = tblPracownicy.IDPracownika
+group by Imie,Nazwisko
+order by Cena
+
+-- wzorzec select
+SELECT 
+	Imie + ' '+  SUBSTRING((ltrim(upper(Nazwisko))),1,1) + SUBSTRING((ltrim(lower(Nazwisko))) ,2,len(Nazwisko)),
+	cast(sum(Ilosc*CenaSprzedazy) as money) as Cena
+	,cast(sum(Ilosc*CenaSprzedazy) as money) -3000 as PodstawaPremii
+	,YEAR(DataSprzedazy) as Rok
+	,DATEPART(q,DataSprzedazy) as Kwartal
+FROM tblOpisSprzedazy 
+	INNER JOIN tblSprzedaz 
+		ON tblOpisSprzedazy.NrSprzedazy = tblSprzedaz.NrSprzedazy 
+			INNER JOIN tblPracownicy 
+				ON tblSprzedaz.IDPracownika = tblPracownicy.IDPracownika
+where YEAR(DataSprzedazy) = 1998 and 
+	DATEPART(q,DataSprzedazy) = 1
+group by Imie,Nazwisko, YEAR(DataSprzedazy),DATEPART(q,DataSprzedazy)
+having sum(Ilosc*CenaSprzedazy) < 3000 
+order by Cena desc;
+
+-- podranking pracowników w obrebie kategorii towarow 
+-- nabiał i najlepsze wartości
+-- nazwa kategorii imie nazwisko i wartosc sprzedazy
+SELECT 
+	Imie + ' '+  SUBSTRING((ltrim(upper(Nazwisko))),1,1) + SUBSTRING((ltrim(lower(Nazwisko))) ,2,len(Nazwisko)),Ilosc,CenaSprzedazy,NazwaKategorii
+	,cast (sum(Ilosc*CenaSprzedazy) as money) as wartosc, NazwaKategorii
+
+FROM tblSprzedaz 
+	INNER JOIN tblKlienci 
+		ON tblSprzedaz.KodKlienta = tblKlienci.KodKlienta 
+	INNER JOIN tblPracownicy
+	    ON tblSprzedaz.IDPracownika = tblPracownicy.IDPracownika 
+	INNER JOIN tblOpisSprzedazy
+		ON tblSprzedaz.NrSprzedazy = tblOpisSprzedazy.NrSprzedazy 
+	INNER JOIN tblTowary 
+		ON tblOpisSprzedazy.KodTowaru = tblTowary.KodTowaru 
+	INNER JOIN tblKategorie 
+		ON tblTowary.Kategoria = tblKategorie.Kategoria
+group by NazwaKategorii,Imie,Nazwisko,Ilosc,CenaSprzedazy
+order by wartosc desc;

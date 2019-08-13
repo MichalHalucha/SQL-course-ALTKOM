@@ -116,6 +116,251 @@ group by nazwa
 order by Ranking desc;
 
 -- filtr top i offset fetch 
-
-
 --cena sprzedazy razy ilosc sprzedazy = wartosc per klient
+
+
+
+-- potrzebujemy policzyc faktury 
+-- policzyc wartosc całkowita
+-- klient, faktura i pozycja faktur
+--cte1 liczy liczbe faktur dla klienta 
+-- cte2 wylicza wartosc faktur klienta
+-- efekt koncowy informacja nazwa klienta wartosc całkowita, liczba faktur, średnia
+
+with 
+CTE1 
+as 
+	(
+	select nazwa
+		,count(NrFaktury) as LiczbaFaktur
+	from tbKlienci
+	INNER JOIN tbFaktury
+		ON tbKlienci.IDKlienta = tbFaktury.KlientID
+	group by nazwa
+	),
+CTE2
+as
+	(
+	select nazwa
+		,SUM(Ilosc*CenaSprz) as wartosc
+	FROM tbPozycjeFaktur 
+	INNER JOIN tbFaktury 
+		ON tbPozycjeFaktur.FakturaID = tbFaktury.IDFaktury 
+	INNER JOIN tbKlienci 
+		ON tbFaktury.KlientID = tbKlienci.IDKlienta
+	group by nazwa
+	)
+select CTE1.nazwa
+	,wartosc
+	,LiczbaFaktur
+	,round (wartosc/LiczbaFaktur,2) as [Średnia Wartość]
+from CTE1 INNER JOIN CTE2
+	on CTE1.nazwa = CTE2.nazwa
+order by [Średnia Wartość]
+-- average - średnia
+
+
+-- nazwa klienta, wartość, średnia wartość
+-- CTE opartego na jednym zbiorze
+with
+CTE1
+as
+(
+SELECT nazwa
+	,NrFaktury
+	,sum(Ilosc*CenaSprz) as Wartość
+FROM tbKlienci
+	INNER JOIN tbFaktury
+		on tbKlienci.IDKlienta = tbFaktury.KlientID
+	INNER JOIN tbPozycjeFaktur
+		on tbFaktury.IDFaktury = tbPozycjeFaktur.FakturaID
+group by nazwa, NrFaktury
+)
+select nazwa, AVG(Wartość) as Średnia
+from CTE1
+group by nazwa
+order by Średnia desc;
+
+-- pierwszy wyznacz maksymalna wartosc faktury dla klienta
+with
+CTE1
+as
+(
+SELECT nazwa
+	,NrFaktury
+	,sum(Ilosc*CenaSprz) as Wartość
+FROM tbKlienci
+	INNER JOIN tbFaktury
+		on tbKlienci.IDKlienta = tbFaktury.KlientID
+	INNER JOIN tbPozycjeFaktur
+		on tbFaktury.IDFaktury = tbPozycjeFaktur.FakturaID
+group by nazwa, NrFaktury
+)
+select nazwa, MAX(Wartość) as Maksymalna
+from CTE1
+group by nazwa
+order by Maksymalna desc;
+
+-- minimalna wartosc per klient
+with
+CTE1
+as
+(
+SELECT nazwa
+	,NrFaktury
+	,sum(Ilosc*CenaSprz) as Wartość
+FROM tbKlienci
+	INNER JOIN tbFaktury
+		on tbKlienci.IDKlienta = tbFaktury.KlientID
+	INNER JOIN tbPozycjeFaktur
+		on tbFaktury.IDFaktury = tbPozycjeFaktur.FakturaID
+group by nazwa, NrFaktury
+)
+select nazwa, MIN(Wartość) as Minimalna
+from CTE1
+group by nazwa
+order by Minimalna desc;
+
+-- mini raport dłużników
+select NrFaktury,TerminPlat
+from tbFaktury
+where Uregulowana='False'
+
+
+-- nadpisywanie rekordów w bazie danych
+select NrFaktury,TerminPlat
+from tbFaktury
+where Uregulowana='False' and NrFaktury = 92
+
+
+go
+UPDATE tbFaktury
+   SET TerminPlat=GETDATE()
+ where Uregulowana='False' and NrFaktury = 92
+GO
+
+-- właściwy raport dłużników
+
+SELECT NrFaktury,TerminPlat, nazwa as Dłużnicy
+FROM tbFaktury 
+	INNER JOIN tbKlienci 
+		ON tbFaktury.KlientID = tbKlienci.IDKlienta
+where Uregulowana='False'
+
+
+-- 
+SELECT NrFaktury,TerminPlat,nazwa, miasto, ulica
+	,sum(Ilosc*CenaSprz) as Zadluzenie
+FROM tbFaktury 
+	INNER JOIN tbKlienci 
+		ON tbFaktury.KlientID = tbKlienci.IDKlienta 
+	INNER JOIN tbPozycjeFaktur 
+		ON tbFaktury.IDFaktury = tbPozycjeFaktur.FakturaID
+where Uregulowana='False' and TerminPlat< cast(GETDATE() as date)
+group by NrFaktury,TerminPlat,nazwa, miasto, ulica
+order by Zadluzenie desc;
+
+--10 klient bez faktury 
+
+SELECT nazwa
+	,miasto
+	,ulica
+	,NrFaktury 
+FROM tbKlienci 
+	LEFT OUTER JOIN tbFaktury 
+		ON tbKlienci.IDKlienta = tbFaktury.KlientID
+where NrFaktury is null
+
+
+SELECT wykonawca,tytul,nosnik,FakturaID        
+FROM tbPozycjeFaktur 
+	RIGHT OUTER JOIN tbTowary 
+		ON tbPozycjeFaktur.TowarID = tbTowary.IDTowaru
+where FakturaID is null
+
+-- INSERT, wprowadzenie nowego rekordu 
+
+INSERT INTO [dbo].[tbTowary]
+           ([nosnik]
+           ,[wykonawca]
+           ,[tytul]
+           ,[rok_wydania]
+           ,[dystrybutor]
+           ,[cena])
+     VALUES
+           (<nosnik, nvarchar(6),>
+           ,<wykonawca, nvarchar(30),>
+           ,<tytul, nvarchar(30),>
+           ,<rok_wydania, int,>
+           ,<dystrybutor, nvarchar(30),>
+           ,<cena, money,>)--, po przecinku można dodać więcej insertów
+GO
+
+--wprowadzeni insert to
+INSERT INTO [dbo].[tbTowary]
+           ([nosnik]
+           ,[wykonawca]
+           ,[tytul]
+           ,[rok_wydania]
+           ,[dystrybutor]
+           ,[cena])
+     VALUES
+           ('CD','AC/DC','SUPER1', 1977,'Muza',39.99),
+			('CD','AC/DC','SUPER2', 1977,'Muza',39.99),
+			('CD','AC/DC','SUPER3', 1977,'Muza',39.99),
+			('CD','AC/DC','SUPER4', 1977,'Muza',39.99); --, po przecinku można dodać więcej insertów
+GO
+
+-- funkcje delete
+DELETE FROM [dbo].[tbTowary]
+      WHERE tytul = 'SUPER2'
+GO
+
+select wykonawca,tytul
+from tbTowary
+where wykonawca='AC/DC'
+	and tytul like '%[1]'
+
+-- drop usuwanie obiektów różnego typu
+Drop table tbTowary;
+
+
+-- słownik miast z dwóch baz danych 3 tabel
+-- nazwa_bazy.nazwa_schematu.nazwa_tabeli
+
+select miasto
+from HM.dbo.tbKlienci
+union
+select miasto 
+from sezam.dbo.tblKlienci
+union
+-- union robi w gratisie distingt  
+select miasto
+from Sezam.dbo.tblPracownicy
+
+-- średnia cena sprzedaży nośnika CTE
+
+with cte1
+as
+(
+	SELECT nosnik,
+		sum(Ilosc) as IloscRazem       
+	FROM tbPozycjeFaktur
+		INNER JOIN tbTowary 
+	ON tbPozycjeFaktur.TowarID = tbTowary.IDTowaru
+	group by nosnik
+)
+,cte2 as 
+(
+	select nosnik
+		,sum(Ilosc*CenaSprz) as wartosc
+	FROM tbPozycjeFaktur
+		INNER JOIN tbTowary 
+	ON tbPozycjeFaktur.TowarID = tbTowary.IDTowaru
+	group by nosnik
+)
+select cte1.nosnik, wartosc,IloscRazem
+,round(wartosc/IloscRazem,2) as sredniaWartoscNosnika
+from cte1 inner join cte2
+	on cte1.nosnik=cte2.nosnik
+order by sredniaWartoscNosnika desc;

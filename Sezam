@@ -1,0 +1,408 @@
+use Sezam;
+go
+-- komentarz jednoliniowy 
+
+
+/*
+select 
+Imie,Nazwisko
+
+from tblPracownicy;
+
+select 
+NazwaTowaru,CenaZadana
+from tblTowary
+order by NazwaTowaru asc;
+
+select 
+NazwaTowaru,CenaZadana
+from tblTowary
+order by CenaZadana desc;
+
+
+USE [Sezam]
+GO
+
+SELECT [KodKlienta]
+      ,[NazwaFirmy]
+      ,[NIP]
+      ,[Telefon]
+      ,[TelefonKomorkowy]
+      ,[Ulica]
+      ,[Kod]
+      ,[Miasto]
+      ,[Aktywny]
+  FROM [dbo].[tblKlienci]
+GO
+
+
+select 
+NazwaFirmy, Miasto
+from tblKlienci
+where Miasto='Warszawa' or Miasto='Zielonka';
+
+
+select 
+NazwaFirmy, Miasto
+from tblKlienci
+where Miasto in ('warszawa','zielonka');
+
+
+select 
+NazwaFirmy, Miasto
+from tblKlienci
+where Miasto in (select Miasto
+					from tblPracownicy);
+
+select 
+Imie,Nazwisko
+from tblPracownicy
+where Nazwisko like 'K%';
+
+
+select 
+Imie,Nazwisko
+from tblPracownicy
+where Nazwisko like '_o%';
+-- znajdowanie  wyrażeń gdzie druga literka jest literką o 
+
+select 
+Imie,Nazwisko
+from tblPracownicy
+where Nazwisko like '[bfk]_[w]%';
+-- wyszukanie nazwisk gdzie zaczynają się od bfk później obojetnie jaka i później litera w
+
+select 
+Imie,Nazwisko
+from tblPracownicy
+where Nazwisko like '[a-c]%';
+-- wyświetlenie z zakresu a-c 
+
+select 
+Imie,Nazwisko
+from tblPracownicy
+where Nazwisko like '[^bfk]%';
+-- negowanie wyszukiwania
+
+select 
+Imie,Nazwisko
+from tblPracownicy
+where Nazwisko like '__[_]%';
+-- przewiltrowanie wyników ze znakiem ucieczki na 3 miejscu 
+
+like '__!_%' escape '!'
+*/
+
+select 
+Imie
+from tblPracownicy
+where Imie like '%a';
+
+--żeńskie imionana litere tb pracownicy kobiety
+
+select
+	name, description
+from sys.fn_helpcollations()
+where name like '%polish%'
+
+select 
+Imie,Nazwisko
+from tblPracownicy
+where Nazwisko='Fuller';
+
+select 
+Imie,Nazwisko
+from tblPracownicy
+where Nazwisko collate Polish_CS_AS='fuller';
+-- uwzględniamy wielkość liter 
+
+select Imie, Nazwisko
+from tblPracownicy
+order by Nazwisko collate POLISH_BIN;
+
+select 
+NazwaTowaru, CenaZadana
+from tblTowary
+where CenaZadana >= 5 and CenaZadana <= 10
+-- zamkniety przedzial od 5-10
+
+select CenaZadana
+from tblTowary
+where CenaZadana between 5 and 10;
+
+
+select NazwaFirmy,TelefonKomorkowy
+from tblKlienci
+where TelefonKomorkowy is null;
+
+
+select GETDATE() as [Data bieżąca];
+-- piszemy nazwe w nawiasie kwadratowym bo mamy spacje. jeżeli było by bez spacji to bez kwadratowego
+
+/* 'rrrr-mm-dd'
+'rrrrmmdd' - uniwersalny zapis 
+*/
+
+select
+NrSprzedazy,DataSprzedazy
+from tblSprzedaz
+where DataSprzedazy between '19980115' and '19980215';
+
+select GETDATE() as [Data bieżąca]
+,CONVERT(varchar,GETDATE(),102) as [Data];
+
+select DataSprzedazy
+	, DATEPART(YYYY,DataSprzedazy) as Rok
+	, DATEPART(Q,DataSprzedazy) as kwartal
+	, DATEPART(M,DataSprzedazy) as mesiac
+	, DATENAME(M,DataSprzedazy) as [Nazwa Miesiąca]
+	, DATEPART(WW,DataSprzedazy) as tydzien
+	, DATEPART(Y,DataSprzedazy) as [Dzień roku]
+	, DATEPART(D,DataSprzedazy) as [Dzień miesiąca]
+	, DATEPART(W,DataSprzedazy) as [Dzień tygodnia]
+	, DATENAME(w,DataSprzedazy) as [NazwaDniaTygodnia]
+from tblSprzedaz
+
+set language 'Polish'
+set language 'English'
+
+select Imie + ' ' + Nazwisko as Pracownik
+from tblPracownicy
+
+select 'Dzisiejsza data to: ' + CONVERT(varchar,GETDATE(),102) as [Moja data komunikat];
+
+select 'Dzisiejsza data to: ' + CAST(GETDATE() as varchar) as [Moja data komunikat];
+
+
+-- imie i nazwisko pracowników 
+-- case ma uzupełniż o zwrot grzecznosciowy 
+
+select
+	case 
+	when Imie like '%a' then 'Pani '
+	else 'Pan '
+	end + Imie +' '+ Nazwisko as Pracownik
+from tblPracownicy
+
+--operatory pracujące na zbiorach 
+
+select distinct miasto 
+from tblKlienci
+
+select miasto 
+from tblKlienci
+union all
+-- union czyli suma logiczna jak dodajemy all to łączy dwie i są wszystkie wartości
+select miasto 
+from tblPracownicy
+-- kolejność zapytań nie ma znaczenia
+
+select miasto 
+from tblKlienci
+intersect
+-- intersect częśc wspólna
+select miasto 
+from tblPracownicy
+
+select miasto 
+from tblKlienci
+except
+-- różnice w tabelach
+select miasto 
+from tblPracownicy
+-- kolejność wykonywania ma znaczenie i inny zbiór danych się dostaje 
+
+-- przy łączeniu tabel trzeba mieć tyle samo argumentów
+select Miasto, NazwaFirmy, null as Nazwiska
+from tblKlienci
+union
+select miasto,null, Nazwisko
+from tblPracownicy
+
+--funkcje tekstowe 
+select  ltrim(NazwaTowaru) as Towar, CenaZadana
+from tblTowary
+order by Towar asc;
+-- usuwanie spacji z lewej
+
+select  upper(NazwaTowaru) as Towar, CenaZadana
+from tblTowary
+order by Towar asc;
+-- zamiana na duże
+
+select  left(upper(NazwaTowaru),4) as Towar, CenaZadana
+from tblTowary
+-- pokazywanie 4 znaków z lewej
+
+select  right(upper(NazwaTowaru),4) as Towar, CenaZadana
+from tblTowary
+-- pokazywanie 4 znaków z prawej
+order by Towar asc;
+
+select  substring(NazwaTowaru,2,4) as Towar, CenaZadana
+from tblTowary
+-- środkowe litery 
+
+select  len(NazwaTowaru) as Towar, CenaZadana
+from tblTowary
+-- długość wyrazu
+
+-- wyświetlić w jednej kolumie imie i nazwisko, żeby w przypadku nazwiska 1 litera dużą pozostałe małymi i jeżeli są spacej na poczatku i nakoncu to spacje usunąć
+--kolumna ma się nazywać pracownik
+
+select 
+Imie + ' '+  SUBSTRING((ltrim(upper(Nazwisko))),1,1) + SUBSTRING((ltrim(lower(Nazwisko))),2,len(Nazwisko))
+from tblPracownicy
+
+
+
+select 
+Imie,Nazwisko
+from tblPracownicy
+where Nazwisko like '_o%';
+
+--funkcje agregujące, group by, inner join
+-- 01 cała kasa
+
+select cast(sum(Ilosc*CenaSprzedazy) as money) as CalaKasa
+from tblOpisSprzedazy;
+
+--02 ranking towarów
+-- join zbiór rekordów dwóch tabel odpowiadajacych wartośći
+select ltrim(NazwaTowaru) as Towar
+	,cast(sum(Ilosc*CenaSprzedazy) as money) as Wartosc
+from tblOpisSprzedazy as o 
+	inner join tblTowary as T
+		on o.KodTowaru = T.KodTowaru
+group by NazwaTowaru
+order by Wartosc desc
+
+
+-- ranking faktur
+select NrSprzedazy,
+	cast(sum(Ilosc*CenaSprzedazy) as money) as Wartosc
+from tblOpisSprzedazy
+group by NrSprzedazy 
+order by Wartosc desc;
+
+-- ranking towarów z udziałem procentowym:
+select ltrim(NazwaTowaru) as Towar
+	,cast(sum(Ilosc*CenaSprzedazy) as money) as Wartosc
+	,cast(sum(Ilosc*CenaSprzedazy) as money) / 
+	(select cast(sum(Ilosc*CenaSprzedazy) as money) from tblOpisSprzedazy) * 100 as UdzialProcentowy
+from tblOpisSprzedazy as o 
+	inner join tblTowary as T
+		on o.KodTowaru = T.KodTowaru
+group by NazwaTowaru
+order by Wartosc desc
+
+-- CTE
+
+/*
+1: CTE oparte na jednym zbiorze danych
+
+with nazwa CTE
+as 
+(
+select .. bez order by, z nazwami kolumn
+)
+select wynikowy 
+from można odwołać się do nazwy CTE jak do istniejącej tabeli
+
+2: CTE oparte na dwóch zbiorach 
+*/
+
+/*
+________________________________________________________________
+1: CTE oparte na jednym zbiorze danych
+
+with nazwa CTE1
+as 
+(
+select .. bez order by, z nazwami kolumn
+), 
+nazwa CTE2 
+as
+(
+select .. bez order by, z nazwami kolumn
+)
+select wynikowy 
+from można odwołać się do nazwy CTE1 i CTE2 jak do istniejącej tabeli
+i połączyć from cte1 inner join cte2
+*/
+
+-- technika optymalizowana przez serwer, lepiej tak pisać kod. Jeżeli mamy dużą liczbę rekordów zwłaszcza 
+with CTE1 as
+(
+select 
+	cast(sum(Ilosc*CenaSprzedazy) as money) as CałaKasa
+	from tblOpisSprzedazy
+)
+select 
+	ltrim(NazwaTowaru) as Towar
+		,cast(sum(Ilosc*CenaSprzedazy) as money) as Wartość
+		,cast(sum(Ilosc*CenaSprzedazy) as money)/CałaKasa *100 as UdziałProc
+	from tblOpisSprzedazy as o 
+	inner join tblTowary as T
+		on o.KodTowaru = T.KodTowaru
+	cross join CTE1
+	-- połączenie rekordu każdego z każdym
+group by NazwaTowaru,CałaKasa
+order by Wartość desc;
+
+--dynamika kwartalna - rok kwartał wartość
+SELECT YEAR(DataSprzedazy) as ROK
+	,DATEPART(q,DataSprzedazy) as kwartal
+	,cast(sum(Ilosc*CenaSprzedazy) as money) as wartość 
+FROM tblSprzedaz 
+	INNER JOIN tblOpisSprzedazy 
+		ON tblSprzedaz.NrSprzedazy = tblOpisSprzedazy.NrSprzedazy
+group by YEAR(DataSprzedazy), DATEPART(q,DataSprzedazy)
+order by ROK,kwartal;
+
+-- dzień drugi
+
+select top(10) LTRIM(NazwaTowaru) as Towar
+	,CAST(sum(Ilosc*CenaSprzedazy)as money) as Wartosc
+from tblOpisSprzedazy as O
+	inner join tblTowary as T
+		on O.KodTowaru=T.KodTowaru
+group by NazwaTowaru
+order by Wartosc desc;
+
+-- zró w taki sposob żeby dostać 10 najgorszych towarów
+
+select top(10) LTRIM(NazwaTowaru) as Towar
+	,CAST(sum(Ilosc*CenaSprzedazy)as money) as Wartosc
+from tblOpisSprzedazy as O
+	inner join tblTowary as T
+		on O.KodTowaru=T.KodTowaru
+group by NazwaTowaru
+order by Wartosc asc;
+
+-- czasami jak mamy liste z ta sama iloscia rekordow 
+-- trzy najliczniej reprezentowane miasta
+
+select Miasto
+	,COUNT(*) as LiczbaKlientów
+from tblKlienci
+group by Miasto
+order by LiczbaKlientów desc
+-- w tym przypadku mamy egzekwo miasta i trzeba wziac to pod uwage
+
+select top(3) with ties Miasto
+	,COUNT(*) as LiczbaKlientów
+from tblKlienci
+group by Miasto
+order by LiczbaKlientów desc
+
+-- wyświetlenie top 3 razem z miastami egzekwo
+
+--\/ wyświetlenie procentowe najlepszych towarów
+select top(20) percent LTRIM(NazwaTowaru) as Towar
+	,CAST(sum(Ilosc*CenaSprzedazy)as money) as Wartosc
+from tblOpisSprzedazy as O
+	inner join tblTowary as T
+		on O.KodTowaru=T.KodTowaru
+group by NazwaTowaru
+order by Wartosc desc;

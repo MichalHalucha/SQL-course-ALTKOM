@@ -1,0 +1,104 @@
+-- funkcja obsługi błędów
+
+begin try
+	drop database Literatura;
+end try
+
+begin catch 
+-- obsługa błędów
+end catch
+
+create database Literatura;
+
+use Literatura;
+go
+
+-- w nawiasie nazwa kolumn z typami
+create table tblAutorzy
+(imie varchar(50)
+,nazwisko varchar(100)
+)
+
+select * from tblAutorzy;
+select * from tblKsiazki;
+select * from Literatura;
+
+drop table tblAutorzy;
+go
+
+create table tblAutorzy
+(Autor_ID int identity(1,1) Primary Key
+,Imie varchar (100)
+,Nazwisko varchar (100) not null
+);
+go
+
+insert into tblAutorzy (Nazwisko,Imie)
+	values ('Kowala','Anka')
+
+insert into tblAutorzy (Nazwisko,Imie, DataDodania)
+	values ('Kowala','Anka','20190812')
+
+-- dodanie nowej kolumny
+alter table tblAutorzy
+	add DataDodania datetime default GETDATE();
+go
+
+alter table tblAutorzy
+	add Ocena int;
+go
+
+insert into tblAutorzy (Nazwisko,Imie, Ocena)
+	values ('Bąk','Andrzej','11')
+
+/*
+alter table tblAutorzy
+	add constraint tblAutorzyCheck
+	check (ocena>=1 and ocena<=10);
+go
+*/
+alter table tblAutorzy with nocheck
+	add constraint tblAutorzyCheck
+	check (ocena>=1 and ocena<=10);
+go
+
+insert into tblAutorzy (Nazwisko,Imie, Ocena)
+	values ('Bąk','Andrzej','5')
+
+create index ix_tblautorzy_nazwisko
+	on tblAutorzy(nazwisko);
+go
+
+drop index tblAutorzy.ix_tblautorzy_nazwisko
+go
+
+create table tblksiazki
+(KsiazkaId int identity(1,1) primary key
+,tytul varchar(100) not null
+,IdAutor int
+)
+
+select * from tblAutorzy
+select * from tblksiazki
+
+
+alter table tblKsiazki
+	add constraint fk_tblksiazki_TblAutorzy
+	foreign key (IdAutor)
+	references tblAutorzy(Autor_Id);
+go
+
+alter table tblKsiazki
+	drop constraint fk_tblksiazki_TblAutorzy
+
+-- jeżeli mamy połączenie miedzy tabelami to nie  możemy używać połączonych kolumn. musimy pierw zniszczyć połączenie później usunąć kolumne
+
+alter table tblksiazki
+	drop column IdAutor
+
+-- zmiana nazwy tabeli z danymi
+exec sp_rename 'tblAutorzy','Autorzy'
+
+-- zmiana nazwy kolumny tabeli 
+exec sp_rename 'tblksiazki.tytul','tytul2','Column';
+

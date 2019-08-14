@@ -472,3 +472,348 @@ FROM tblSprzedaz
 		ON tblTowary.Kategoria = tblKategorie.Kategoria
 group by NazwaKategorii,Imie,Nazwisko,Ilosc,CenaSprzedazy
 order by wartosc desc;
+
+
+
+--top filtr procentowy -- T-SQL
+-- pominiecia rekordów  offset fetch - standardowy
+
+-- select 
+-- funkcje agregujące
+-- zapytania CTE
+-- union dwie bazy danych trzy babele
+
+-- DAY3
+-- Obiekty zapisane na serwerze
+-- widoki i procedury składowane
+-- widoki, zapisane na serwrze zapytania, (widoczne), nazwy musza byc unikatowe, zapytania musza zwracac zbiory rekordów bez order by!
+
+
+SELECT 
+	NazwaFirmy
+	, cast(sum(Ilosc*CenaSprzedazy) as money) as wartosc
+FROM tblKlienci
+	INNER JOIN tblSprzedaz 
+		ON tblKlienci.KodKlienta = tblSprzedaz.KodKlienta 
+	INNER JOIN tblOpisSprzedazy 
+		ON tblSprzedaz.NrSprzedazy = tblOpisSprzedazy.NrSprzedazy
+group by NazwaFirmy
+order by wartosc desc;
+
+-- przekształćenie zapytania w widok
+
+go
+create view vRankingFirm
+as 
+SELECT 
+	NazwaFirmy
+	, cast(sum(Ilosc*CenaSprzedazy) as money) as wartosc
+FROM tblKlienci
+	INNER JOIN tblSprzedaz 
+		ON tblKlienci.KodKlienta = tblSprzedaz.KodKlienta 
+	INNER JOIN tblOpisSprzedazy 
+		ON tblSprzedaz.NrSprzedazy = tblOpisSprzedazy.NrSprzedazy
+group by NazwaFirmy
+go
+
+select NazwaFirmy
+	,wartosc
+from vRankingFirm
+where wartosc>1500
+order by wartosc desc;
+
+-- sortowanie widoku 
+go
+create view vTop_10_RankingFirm
+as 
+SELECT top(10)
+-- top(99,999) percent
+	NazwaFirmy
+	, cast(sum(Ilosc*CenaSprzedazy) as money) as wartosc
+FROM tblKlienci
+	INNER JOIN tblSprzedaz 
+		ON tblKlienci.KodKlienta = tblSprzedaz.KodKlienta 
+	INNER JOIN tblOpisSprzedazy 
+		ON tblSprzedaz.NrSprzedazy = tblOpisSprzedazy.NrSprzedazy
+group by NazwaFirmy
+order by wartosc desc;
+go
+
+select * 
+from vTop_10_RankingFirm
+
+go
+create view SlownikMiast
+as
+	select miasto
+	from HM.dbo.tbKlienci
+	union
+	select miasto 
+	from sezam.dbo.tblKlienci
+	union
+
+	-- union robi w gratisie distingt  
+	select miasto
+	from Sezam.dbo.tblPracownicy
+go
+
+select miasto
+from SlownikMiast
+where miasto like '[k-z]%'
+
+-- duży widok dla analityków
+go
+-- jeżeli trzeba nadpisać tabele to trzeba wykonać alter
+create view vDlaTP
+as
+SELECT 
+	Imie + ' '+  SUBSTRING((ltrim(upper(Nazwisko))),1,1) + SUBSTRING((ltrim(lower(Nazwisko))),2,len(Nazwisko)) as Nazwa
+	,NazwaFirmy
+	,Stanowisko
+	,tblSprzedaz.NrSprzedazy as NrFaktury
+	,cast(DataSprzedazy as date) as Data
+	,YEAR(DataSprzedazy) as Rok
+	,DATEPART(q,DataSprzedazy) as Kwartal
+	,MONTH(DataSprzedazy) as miesiac
+	,DATEPART(w,DataSprzedazy) as DzienTygodnia
+	,DATENAME(m,DataSprzedazy) as NazwaMiesiaca
+	,DATENAME(w,DataSprzedazy) as NazwaDniaMiesiaca
+	,Ilosc
+	,cast(Ilosc*CenaSprzedazy as money) as Wartosc  
+	,cast(Ilosc*Cena as money) as Koszt
+	,cast(Ilosc*(CenaSprzedazy-Cena)as money) as Zysk
+	,LTRIM(NazwaTowaru) as Towar
+	,NazwaKategorii
+FROM tblSprzedaz 
+INNER JOIN tblKlienci
+ ON tblSprzedaz.KodKlienta = tblKlienci.KodKlienta 
+INNER JOIN tblOpisSprzedazy
+ ON tblSprzedaz.NrSprzedazy = tblOpisSprzedazy.NrSprzedazy
+INNER JOIN tblPracownicy
+ ON tblSprzedaz.IDPracownika = tblPracownicy.IDPracownika 
+INNER JOIN tblTowary 
+ ON tblOpisSprzedazy.KodTowaru = tblTowary.KodTowaru 
+INNER JOIN tblKategorie 
+ ON tblTowary.Kategoria = tblKategorie.Kategoria
+ go
+
+select Rok,kwartal,Towar,sum(Zysk) as ZyskKwartalny
+from vDlaTP
+where Rok=1998 and Kwartal=1
+group by Rok,Kwartal,Towar
+order by Rok,Kwartal
+
+-- widoki wykorzystujemy głównie dla bezpieczeństwa możemy się później do nich odwoływać jak do tabel
+
+-- procedury skłądowane  -- zapisywane sa na serwerze -- muszą mieć aliasy
+
+go
+create procedure pPremia_ROK_Kwartal_KwotaMinimalna
+@Rok as int, @Kwartal as int, @ObrotMin as money
+as 
+	SELECT 
+		Imie + ' '+  SUBSTRING((ltrim(upper(Nazwisko))),1,1) + SUBSTRING((ltrim(lower(Nazwisko))) ,2,len(Nazwisko)) as Nazwa
+		,cast(sum(Ilosc*CenaSprzedazy) as money) as Cena
+		,cast(sum(Ilosc*CenaSprzedazy) as money) -@ObrotMin as PodstawaPremii
+		,YEAR(DataSprzedazy) as Rok
+		,DATEPART(q,DataSprzedazy) as Kwartal
+	FROM tblOpisSprzedazy 
+		INNER JOIN tblSprzedaz 
+			ON tblOpisSprzedazy.NrSprzedazy = tblSprzedaz.NrSprzedazy 
+				INNER JOIN tblPracownicy 
+					ON tblSprzedaz.IDPracownika = tblPracownicy.IDPracownika
+	where YEAR(DataSprzedazy) = @Rok and 
+		DATEPART(q,DataSprzedazy) = @Kwartal
+	group by Imie,Nazwisko, YEAR(DataSprzedazy),DATEPART(q,DataSprzedazy)
+	having sum(Ilosc*CenaSprzedazy) < @ObrotMin 
+	order by Cena desc;	
+go
+
+-- chce skorzystać z procedury
+exec pPremia_ROK_Kwartal_KwotaMinimalna 1999,1,900;
+
+
+-- lista ładnych nazw towarów z przedziału cen
+go
+create procedure pCenaOdCenaDo
+@CenaOd as money,@CenaDo as money
+as
+select
+ltrim(NazwaTowaru) as Towar,CenaZadana
+from tblTowary
+where CenaZadana between @CenaOd and @CenaDo
+order by CenaZadana
+go
+
+exec pCenaOdCenaDo 10,100
+
+-- stworzenie nowych klientow na podstawie tabeli klienci 
+-- select into czyli tworzenie nowej tabeli i jej wykorzystanie
+
+go 
+create procedure pKopiujTabeleKlienci
+as
+begin 
+	if OBJECT_ID('tblNowiKlienci','U') is not null
+		drop table tblNowiKlienci
+
+-- w nowej tabeli pole kod klienta nazywało się kod klienta 2, nadajemy alias
+
+SELECT [KodKlienta] as [KodKlienta2]
+      ,[NazwaFirmy]
+      ,[NIP]
+      ,[Telefon]
+      ,[TelefonKomorkowy]
+      ,[Ulica]
+      +' '+[Kod]
+      +' '+[Miasto] as Adres
+      ,[Aktywny]
+  Into [dbo].[tblNowiKlienci]
+  FROM [dbo].[tblKlienci]
+  where NazwaFirmy like '[a-g]%'
+end
+GO
+
+exec pKopiujTabeleKlienci
+select * from tblNowiKlienci
+
+
+-- sprawdzimy jakie mamy ceny, dla tej kategorii zmienimy ceny i wystietmy- 
+--procedura do zmiany cen
+
+go 
+alter procedure pZmianaCen_Kategoria_Zmian
+@Kategoria as int,@Zmian as float
+as 
+--
+select ltrim(NazwaTowaru) as Towar
+,Kategoria
+,CenaZadana
+from tblTowary
+where Kategoria=@Kategoria
+--
+update tblTowary 
+set CenaZadana=CenaZadana*@Zmian 
+where Kategoria=@Kategoria
+--
+select ltrim(NazwaTowaru) as Towar
+,Kategoria
+,CenaZadana
+from tblTowary
+where Kategoria=@Kategoria
+go
+
+exec pZmianaCen_Kategoria_Zmian 2,1.05;
+
+-- przekazywanie offsetu jako parametr i można wybierać stronnicowanie
+
+
+if OBJECT_ID('pStronicowanieOffsetFetch','P') is not null
+	drop procedure pStronicowanieOffsetFetch
+go
+
+create procedure pStronicowanieOffsetFetch
+@NumerStrony as int,@RekordowNaStrone as int
+as
+if @NumerStrony>0 and @RekordowNaStrone>0
+begin
+	select ltrim(NazwaTowaru) as Towar
+	,CenaZadana
+	from tblTowary
+	order by NazwaTowaru asc
+	offset (@NumerStrony-1)*@RekordowNaStrone rows
+	fetch next @RekordowNaStrone rows only
+end
+go
+
+execute pStronicowanieOffsetFetch 1,7
+
+-- poradnik pracowników w obrbie 
+with cte1 as
+(
+	select cast(sum(Ilosc*CenaSprzedazy)  as money) as CalaWartosc  
+	from tblOpisSprzedazy
+),
+cte2 as
+(
+	SELECT NazwaKategorii
+		   ,cast(sum(Ilosc*CenaSprzedazy)  as money) as KategoriaWartosc    
+	FROM tblOpisSprzedazy 
+		INNER JOIN tblTowary 
+			ON tblOpisSprzedazy.KodTowaru = tblTowary.KodTowaru 
+		INNER JOIN tblKategorie 
+			ON tblTowary.Kategoria = tblKategorie.Kategoria
+	group by NazwaKategorii
+)
+SELECT tblKategorie.NazwaKategorii 
+	,Imie
+	+' '+ Upper(left(rtrim(ltrim(Nazwisko)),1))
+	+lower(right(rtrim(ltrim(Nazwisko)),LEN(rtrim(ltrim(Nazwisko)))-1)) as Pracownik
+	 ,cast(sum(Ilosc*CenaSprzedazy)  as money) as wartosc 
+	 ,cast(sum(Ilosc*CenaSprzedazy)  as money)/CalaWartosc*100 as UdzialProcCalosc 
+	 ,cast(sum(Ilosc*CenaSprzedazy)  as money)/KategoriaWartosc*100 as UdzialProcKategoria  
+FROM  tblPracownicy 
+	INNER JOIN tblSprzedaz 
+		ON tblPracownicy.IDPracownika = tblSprzedaz.IDPracownika 
+	INNER JOIN tblOpisSprzedazy 
+		ON tblSprzedaz.NrSprzedazy = tblOpisSprzedazy.NrSprzedazy 
+	INNER JOIN tblTowary 
+		ON tblOpisSprzedazy.KodTowaru = tblTowary.KodTowaru 
+	INNER JOIN tblKategorie 
+		ON tblTowary.Kategoria = tblKategorie.Kategoria
+	inner join cte2
+		on cte2.NazwaKategorii=tblKategorie.NazwaKategorii
+	cross join cte1
+group by tblKategorie.NazwaKategorii, Imie, Nazwisko,CalaWartosc, KategoriaWartosc
+order by NazwaKategorii, wartosc desc;
+
+-- rekurencja (rekurencyjne odwołanie się) (do samej siebie). Z brakującymi latami i kwartałami
+-- cte rekurencyjne
+
+
+with cteLata 
+as
+(
+	select 1998 as Rok
+	union all
+	--rekurencja
+	select Rok + 1 from cteLata where Rok<2002
+),
+cteKwartaly
+as
+(
+	select 1 as kwartal
+	union all
+	select Kwartal + 1 from cteKwartaly where kwartal<4 
+),
+cteKalendarz
+as
+(
+	select Rok,kwartal
+	from cteLata cross join cteKwartaly
+),
+cteDynamika
+as
+(
+	SELECT 
+	 YEAR(DataSprzedazy) as Rok
+	,DATEPART(q,DataSprzedazy) as Kwartal
+	,cast(sum(Ilosc*CenaSprzedazy) as money) as Wartosc     
+	FROM tblOpisSprzedazy 
+		INNER JOIN tblSprzedaz 
+			ON tblOpisSprzedazy.NrSprzedazy = tblSprzedaz.NrSprzedazy
+	group by YEAR(DataSprzedazy),DATEPART(q,DataSprzedazy)
+)
+--select wynikowy
+	select cteKalendarz.Rok,cteKalendarz.kwartal,isnull(Wartosc,0) as WartoscKwartalu
+
+	from cteKalendarz
+	left outer join cteDynamika
+		on cteKalendarz.Rok=cteDynamika.Rok 
+		and 
+		cteKalendarz.kwartal=cteDynamika.Kwartal
+	
+	order by cteKalendarz.Rok,cteKalendarz.kwartal\
+
+
+ 

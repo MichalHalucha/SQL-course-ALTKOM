@@ -364,3 +364,194 @@ select cte1.nosnik, wartosc,IloscRazem
 from cte1 inner join cte2
 	on cte1.nosnik=cte2.nosnik
 order by sredniaWartoscNosnika desc;
+
+--DAY3
+select nosnik
+	,sum(Ilosc*CenaSprz) as wartosc
+	,sum(Ilosc) as IloscRazem
+	,round(Ilosc*CenaSprz)/SUM(Ilosc),2) as sredniaWartoscNosnika
+FROM tbPozycjeFaktur
+		INNER JOIN tbTowary 
+	ON tbPozycjeFaktur.TowarID = tbTowary.IDTowaru
+group by nosnik
+order by sredniaWartoscNosnika desc;
+-- nie dziala?
+
+-- rankingowe funkcje okna
+use HM
+SELECT wykonawca, sum(ilosc) as IloscRazem
+FROM tbPozycjeFaktur 
+	INNER JOIN tbTowary 
+		ON tbPozycjeFaktur.TowarID = tbTowary.IDTowaru
+group by wykonawca
+
+-- ranking wykonawcow po ilosciach
+SELECT ROW_NUMBER() over (order by sum(ilosc) desc) as Pozycja
+	,wykonawca 
+	,sum(ilosc) as IloscRazem
+FROM tbPozycjeFaktur 
+	INNER JOIN tbTowary 
+		ON tbPozycjeFaktur.TowarID = tbTowary.IDTowaru
+group by wykonawca
+
+--SELECT
+SELECT DENSE_RANK() over (order by sum(ilosc) desc) as Pozycja
+	,wykonawca 
+	,sum(ilosc) as IloscRazem
+FROM tbPozycjeFaktur 
+	INNER JOIN tbTowary 
+		ON tbPozycjeFaktur.TowarID = tbTowary.IDTowaru
+group by wykonawca
+
+SELECT RANK() over (order by sum(ilosc) desc) as Pozycja
+	,wykonawca 
+	,sum(ilosc) as IloscRazem
+FROM tbPozycjeFaktur 
+	INNER JOIN tbTowary 
+		ON tbPozycjeFaktur.TowarID = tbTowary.IDTowaru
+group by wykonawca
+
+--ntile (n)
+SELECT ntile(31/4) over (order by sum(ilosc) desc) as Pozycja
+	,wykonawca 
+	,sum(ilosc) as IloscRazem
+FROM tbPozycjeFaktur 
+	INNER JOIN tbTowary 
+		ON tbPozycjeFaktur.TowarID = tbTowary.IDTowaru
+group by wykonawca
+
+-- funkcja okna 
+SELECT ntile(4) over (order by sum(ilosc) desc) as Pozycja
+	,wykonawca 
+	,sum(ilosc) as IloscRazem
+FROM tbPozycjeFaktur 
+	INNER JOIN tbTowary 
+		ON tbPozycjeFaktur.TowarID = tbTowary.IDTowaru
+group by wykonawca
+
+-- pozycja wykonawcy u dystrybutora
+select	rank() over (partition by dystrybutor 
+		order by sum(ilosc*Cenasprz) desc)  as Pozycja
+		,dystrybutor,wykonawca,sum(ilosc*Cenasprz) as Wartosc
+FROM tbPozycjeFaktur 
+	INNER JOIN tbTowary 
+		ON tbPozycjeFaktur.TowarID = tbTowary.IDTowaru
+group by dystrybutor,wykonawca
+
+--_______________________________________________________________
+
+-- najlepsi wykonawcy u dystrybutora
+with cte1
+as
+(
+		select	rank() over (partition by dystrybutor 
+				order by sum(ilosc*Cenasprz) desc)  as Pozycja
+				,dystrybutor,wykonawca,sum(ilosc*Cenasprz) as Wartosc
+		FROM tbPozycjeFaktur 
+			INNER JOIN tbTowary 
+				ON tbPozycjeFaktur.TowarID = tbTowary.IDTowaru
+		group by dystrybutor,wykonawca
+)
+select Pozycja,Dystrybutor,wykonawca,wartosc
+from cte1
+where pozycja=1;
+
+--trzech pierwszych 
+
+with cte1
+as
+(
+		select	rank() over (partition by dystrybutor 
+				order by sum(ilosc*Cenasprz) desc)  as Pozycja
+				,dystrybutor,wykonawca,sum(ilosc*Cenasprz) as Wartosc
+		FROM tbPozycjeFaktur 
+			INNER JOIN tbTowary 
+				ON tbPozycjeFaktur.TowarID = tbTowary.IDTowaru
+		group by dystrybutor,wykonawca
+)
+select Pozycja,Dystrybutor,wykonawca,wartosc
+from cte1
+where pozycja<=3;
+
+------
+with cte1
+as
+(
+		select	rank() over (partition by dystrybutor 
+				order by sum(ilosc*Cenasprz) asc)  as Pozycja
+				,dystrybutor,wykonawca,sum(ilosc*Cenasprz) as Wartosc
+		FROM tbPozycjeFaktur 
+			INNER JOIN tbTowary 
+				ON tbPozycjeFaktur.TowarID = tbTowary.IDTowaru
+		group by dystrybutor,wykonawca
+)
+select Pozycja,Dystrybutor,wykonawca,wartosc
+from cte1
+where pozycja=1;
+
+-- nietypowe grupowanie
+-- standardowe - 108 rek
+SELECT YEAR(DataSprzed) as rok
+	,DATEPART(q,DataSprzed) as kwartal
+	,wykonawca
+	,sum(ilosc) as IloscRazem
+FROM tbFaktury 
+INNER JOIN tbPozycjeFaktur 
+ON tbFaktury.IDFaktury = tbPozycjeFaktur.FakturaID 
+INNER JOIN tbTowary 
+ON tbPozycjeFaktur.TowarID = tbTowary.IDTowaru
+group by YEAR(DataSprzed),DATEPART(q,DataSprzed),wykonawca
+order by rok, kwartal,IloscRazem desc
+
+
+-- Grupowanie RollUp
+-- suma dla każdego poziomu chierarchie dodatkową
+
+SELECT YEAR(DataSprzed) as rok
+	,DATEPART(q,DataSprzed) as kwartal
+	,wykonawca
+	,sum(ilosc) as IloscRazem
+FROM tbFaktury 
+INNER JOIN tbPozycjeFaktur 
+ON tbFaktury.IDFaktury = tbPozycjeFaktur.FakturaID 
+INNER JOIN tbTowary 
+ON tbPozycjeFaktur.TowarID = tbTowary.IDTowaru
+group by rollup
+(
+YEAR(DataSprzed),DATEPART(q,DataSprzed),wykonawca
+)
+order by rok, kwartal,IloscRazem desc
+
+
+-- grouping sets -- dodatkowa suma dla wybranego poziomu hierarchii
+SELECT YEAR(DataSprzed) as rok
+	,DATEPART(q,DataSprzed) as kwartal
+	,wykonawca
+	,sum(ilosc) as IloscRazem
+FROM tbFaktury 
+INNER JOIN tbPozycjeFaktur 
+ON tbFaktury.IDFaktury = tbPozycjeFaktur.FakturaID 
+INNER JOIN tbTowary 
+ON tbPozycjeFaktur.TowarID = tbTowary.IDTowaru
+group by grouping sets
+((),-- grand total - opcjonalny
+(YEAR(DataSprzed)) -- lata opcjonalny
+,(DATEPART(q,DataSprzed)) -- kwartał opcjonalny
+,(YEAR(DataSprzed),DATEPART(q,DataSprzed),wykonawca) -- obligatoryjne
+)
+order by rok, kwartal,IloscRazem desc
+
+-- grupowanie Cube -- grupowanie każdy z każdym 
+SELECT YEAR(DataSprzed) as rok
+	,DATEPART(q,DataSprzed) as kwartal
+	,wykonawca
+	,sum(ilosc) as IloscRazem
+FROM tbFaktury 
+INNER JOIN tbPozycjeFaktur 
+ON tbFaktury.IDFaktury = tbPozycjeFaktur.FakturaID 
+INNER JOIN tbTowary 
+ON tbPozycjeFaktur.TowarID = tbTowary.IDTowaru
+group by cube
+(YEAR(DataSprzed),DATEPART(q,DataSprzed),wykonawca)
+order by rok, kwartal,IloscRazem desc
+

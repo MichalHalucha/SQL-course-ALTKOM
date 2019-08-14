@@ -1,0 +1,19 @@
+1. Tworzymy excela i zapisujemy go jako odczyt makr
+2. Wejść do SQL SERVER MANAGMENT i skopiować link który znajduje się przy łączeniu z bazą danych
+3. Wczytujemy do excela moduł z zajęć w VBA
+4. przechodzimy do excela i wklejamy w miejsce Data Source
+5. Klikamy Tool > References > Zaznaczamy Microsoft Active Data Objects 2.8 Library
+6. W excelu tworzymy przycisk Developer > Wstaw > I klikamy w naszą baze danych 
+7. W excelu tworzymy duże okno i scalamy je (to okno nazywamy jako zrodlo) - będzie ona w kodzie
+8. Jak w okienko wpiszemy zapytania z serwera i klikniemy przycisk to zapytanie zadziała
+9. Wczytane dane pojawią się w zakładce Data
+10. Jeżeli chcemy wczytywać dane z innej bazy danych wpisujemy w Excel do Initial Catalog nazwe. 
+*głównie do komunikacji operujemy na Data Source i Initial Calagog w module VBA
+--SQL Server connection strings
+-- Parametry połączenia z programem SQL Server
+
+-----------
+
+Jeżeli chcemy połączyć się z świeżego excela bez gotowego modułu
+1. Wchodzimy w zakładkę dane i klikamy >pobierz dane> podajemy dane serwera Czyli Serwer plus Baza danych (sezam)
+2. Możemy filtrować sobie dane z bazy danych

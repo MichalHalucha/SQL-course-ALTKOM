@@ -102,3 +102,5 @@ exec sp_rename 'tblAutorzy','Autorzy'
 -- zmiana nazwy kolumny tabeli 
 exec sp_rename 'tblksiazki.tytul','tytul2','Column';
 
+-- DAY3
+
